@@ -8,7 +8,7 @@ from record import record_audio
 
 app = FastAPI()
 
-# ✅ CORS FIX
+# ✅ Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,7 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🔥 Use 127.0.0.1 instead of localhost (more stable)
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 
 
@@ -26,24 +25,49 @@ def home():
     return {"status": "running"}
 
 
+# ✅ Language Detection
+def detect_language(text):
+    try:
+        text.encode('ascii')
+        return "English"
+    except:
+        if any('\u0C00' <= ch <= '\u0C7F' for ch in text):
+            return "Telugu"
+        elif any('\u0900' <= ch <= '\u097F' for ch in text):
+            return "Hindi"
+        else:
+            return "Unknown"
+
+
 @app.get("/voice-chat")
 async def voice_chat():
     try:
-        # 🎤 Step 1: Record
+        # 🎤 Step 1: Record audio
         record_audio()
 
         # 📝 Step 2: Speech → Text
         user_text = transcribe("input.wav")
         print("USER:", user_text)
 
-        # 🧠 Step 3: Prompt
+        # 🌐 Step 3: Detect language
+        language = detect_language(user_text)
+
+        if language == "Telugu":
+            language_instruction = "Answer in Telugu."
+        elif language == "Hindi":
+            language_instruction = "Answer in Hindi."
+        else:
+            language_instruction = "Answer in English."
+
+        # 🧠 Step 4: Prompt
         context = """You are a helpful offline AI assistant.
 - Answer clearly
 - Keep responses short (2–3 lines)
 """
-        final_prompt = f"{context}\nUser: {user_text}\nAssistant:"
 
-        # 🤖 Step 4: Call Ollama
+        final_prompt = f"{context}\n{language_instruction}\nUser: {user_text}\nAssistant:"
+
+        # 🤖 Step 5: Call Ollama
         response = requests.post(
             OLLAMA_URL,
             json={
@@ -51,36 +75,35 @@ async def voice_chat():
                 "prompt": final_prompt,
                 "stream": False
             },
-            timeout=60
+            timeout=120
         )
 
-        # 🔍 Debug prints (VERY IMPORTANT)
-        print("STATUS:", response.status_code)
-        print("RAW RESPONSE:", response.text)
-
         if response.status_code != 200:
-            return {"error": "Ollama failed", "details": response.text}
+            return {
+                "user": user_text,
+                "response": "Ollama error",
+                "language": language
+            }
 
         result = response.json()
-
-        # ✅ Safe extraction
-        if "response" in result:
-            reply = result["response"]
-        else:
-            reply = "Error: No response from model"
-            print("Unexpected JSON:", result)
+        reply = result.get("response", "No response from model")
 
         print("AI:", reply)
 
-        # 🔊 Step 5: Speak
+        # 🔊 Step 6: Speak
         speak(reply)
 
-        # 📤 Step 6: Return
+        # 📤 Step 7: Return response
         return {
             "user": user_text,
-            "response": reply
+            "response": reply,
+            "language": language
         }
 
     except Exception as e:
         print("ERROR:", str(e))
-        return {"error": str(e)}
+        return {
+            "user": "",
+            "response": "Something went wrong. Please try again.",
+            "language": "English"
+        }

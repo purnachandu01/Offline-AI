@@ -1,101 +1,194 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Offline AI Assistant</title>
+<meta charset="UTF-8">
+<title>AI Assistant</title>
 
-    <style>
-        body {
-            font-family: Arial;
-            text-align: center;
-            margin-top: 50px;
-            background-color: #f5f5f5;
-        }
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+  }
 
-        h2 {
-            color: #333;
-        }
+  body {
+    height: 100vh;
+    background: linear-gradient(135deg, #1e1e2f, #3a3a6a);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
 
-        button {
-            padding: 12px 25px;
-            font-size: 16px;
-            border: none;
-            border-radius: 8px;
-            background-color: #007bff;
-            color: white;
-            cursor: pointer;
-        }
+  #app {
+    width: 420px;
+    max-width: 95%;
+    height: 80vh;
+    backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.08);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  }
 
-        button:hover {
-            background-color: #0056b3;
-        }
+  #header {
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    background: rgba(255,255,255,0.1);
+  }
 
-        #output {
-            margin-top: 20px;
-            white-space: pre-line;
-            font-size: 16px;
-        }
+  #chat {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+  }
 
-        /* 👤 Avatar */
-        #avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background-color: blue;
-            margin: 30px auto;
-        }
+  .msg {
+    margin: 10px 0;
+    display: flex;
+  }
 
-        /* 🔊 Speaking animation */
-        .speaking {
-            animation: pulse 0.8s infinite;
-            background-color: red !important;
-        }
+  .user { justify-content: flex-end; }
+  .ai { justify-content: flex-start; }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-    </style>
+  .bubble {
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 70%;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .user .bubble {
+    background: #4e9af1;
+  }
+
+  .ai .bubble {
+    background: rgba(255,255,255,0.2);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px);}
+    to { opacity: 1; transform: translateY(0);}
+  }
+
+  #controls {
+    padding: 15px;
+    text-align: center;
+  }
+
+  #record-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #4e9af1, #6fc3ff);
+    font-size: 28px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    transition: 0.2s;
+  }
+
+  #record-btn:hover {
+    transform: scale(1.1);
+  }
+
+  #record-btn.recording {
+    background: red;
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1);}
+    50% { transform: scale(1.2);}
+    100% { transform: scale(1);}
+  }
+
+  #language {
+    margin-top: 10px;
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+</style>
 </head>
 
 <body>
 
-<h2>Offline AI Assistant</h2>
+<div id="app">
+  <div id="header">🤖 Offline AI Assistant</div>
 
-<!-- 👤 Avatar -->
-<div id="avatar"></div>
+  <div id="chat"></div>
 
-<button onclick="start()">🎤 Talk</button>
-
-<p id="output"></p>
+  <div id="controls">
+    <button id="record-btn">🎤</button>
+    <div id="language">Language: English</div>
+  </div>
+</div>
 
 <script>
-async function start() {
-    let avatar = document.getElementById("avatar");
+const chat = document.getElementById("chat");
+const btn = document.getElementById("record-btn");
+const language = document.getElementById("language");
 
-    try {
-        // 🔴 Start animation
-        avatar.classList.add("speaking");
+function addMessage(text, type) {
+  const div = document.createElement("div");
+  div.className = "msg " + type;
 
-        let res = await fetch("http://127.0.0.1:8000/voice-chat");
-        let data = await res.json();
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
 
-        if (data.error) {
-            document.getElementById("output").innerText = "Error: " + data.error;
-        } else {
-            document.getElementById("output").innerText =
-                "You: " + data.user + "\n\nAI: " + data.response;
-        }
+  div.appendChild(bubble);
+  chat.appendChild(div);
 
-    } catch (err) {
-        document.getElementById("output").innerText = "Server not reachable!";
-    }
+  if (type === "ai") {
+    typeText(bubble, text);
+  } else {
+    bubble.textContent = text;
+  }
 
-    // ⏱ Stop animation after 4 seconds
-    setTimeout(() => {
-        avatar.classList.remove("speaking");
-    }, 4000);
+  chat.scrollTop = chat.scrollHeight;
 }
+
+function typeText(element, text) {
+  let i = 0;
+  const speed = 20;
+
+  function typing() {
+    if (i < text.length) {
+      element.textContent += text.charAt(i);
+      i++;
+      setTimeout(typing, speed);
+    }
+  }
+  typing();
+}
+
+btn.addEventListener("click", async () => {
+  btn.classList.add("recording");
+  btn.innerHTML = "⏺";
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/voice-chat");
+    const data = await res.json();
+
+    addMessage(data.user, "user");
+    addMessage(data.response, "ai");
+
+    language.textContent = "Language: " + data.language;
+
+  } catch (err) {
+    addMessage("Error: " + err.message, "ai");
+  }
+
+  btn.classList.remove("recording");
+  btn.innerHTML = "🎤";
+});
 </script>
 
 </body>
