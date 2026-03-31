@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Offline AI Assistant</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #f5f5f5;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #output {
+            margin-top: 20px;
+            white-space: pre-line;
+            font-size: 16px;
+        }
+
+        /* 👤 Avatar */
+        #avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: blue;
+            margin: 30px auto;
+        }
+
+        /* 🔊 Speaking animation */
+        .speaking {
+            animation: pulse 0.8s infinite;
+            background-color: red !important;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Offline AI Assistant</h2>
+
+<!-- 👤 Avatar -->
+<div id="avatar"></div>
+
+<button onclick="start()">🎤 Talk</button>
+
+<p id="output"></p>
+
+<script>
+async function start() {
+    let avatar = document.getElementById("avatar");
+
+    try {
+        // 🔴 Start animation
+        avatar.classList.add("speaking");
+
+        let res = await fetch("http://127.0.0.1:8000/voice-chat");
+        let data = await res.json();
+
+        if (data.error) {
+            document.getElementById("output").innerText = "Error: " + data.error;
+        } else {
+            document.getElementById("output").innerText =
+                "You: " + data.user + "\n\nAI: " + data.response;
+        }
+
+    } catch (err) {
+        document.getElementById("output").innerText = "Server not reachable!";
+    }
+
+    // ⏱ Stop animation after 4 seconds
+    setTimeout(() => {
+        avatar.classList.remove("speaking");
+    }, 4000);
+}
+</script>
+
+</body>
+</html>
