@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+requests
+sounddevice
+scipy
+numpy
+faster-whisper
+pyttsx3
+deepface
+tensorflow
+opencv-python
